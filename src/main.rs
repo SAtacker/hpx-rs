@@ -1,3 +1,4 @@
+// #![allow(unused_imports, unused_variables, dead_code)]
 use std::{
     borrow::Borrow,
     ffi::{c_char, c_double, c_int, CString},
@@ -19,7 +20,9 @@ mod ffi {
 
         fn fibonacci(u: u64) -> u64;
         fn fibonacci_hpx(u: u64) -> u64;
+        unsafe fn copy_parallel(src: *const i32, src_end: *const i32, dest: *mut i32);
 
+        fn hpx_init() -> i32;
         unsafe fn start(
             func: unsafe fn(i32, *mut *mut c_char) -> i32,
             argc: i32,
@@ -75,6 +78,20 @@ fn stencil_main() -> i32 {
     return 0;
 }
 
+#[no_mangle]
+pub extern "C" fn hpx_main_rust(_argc: i32, _argv: *mut *mut i8) -> i32 {
+    let src = vec![1, 2, 3, 4, 5];
+    let mut dest = vec![0; src.len()];
+
+    unsafe {
+        ffi::copy_parallel(src.as_ptr(), src.as_ptr().add(src.len()), dest.as_mut_ptr());
+    }
+
+    println!("Destination: {:?}", dest);
+
+    0
+}
+
 fn main() {
     // Convert from OsString to nul-terminated CString, truncating each argument
     // at the first inner nul byte if present.
@@ -107,6 +124,9 @@ fn main() {
 
     let fib = ffi::fibonacci(10);
     println!("fib (non-hpx) (10) = {:?}", fib);
+
+    ffi::hpx_init();
+
     let mut _a = 0;
     unsafe {
         _a = ffi::start(
